@@ -4,7 +4,7 @@
   El campo supabasePublishableKey admite sb_publishable_... o la clave pública legacy anon.
 */
 window.DS_CONFIG = {
-  supabaseUrl: "PON_AQUI_TU_URL_SUPABASE",
-  supabasePublishableKey: "PON_AQUI_TU_CLAVE_PUBLICA_SUPABASE",
-  turnstileSiteKey: "" // Opcional: usar solo si activas Cloudflare Turnstile en Supabase Auth
+  supabaseUrl: "https://sopqyenxtwssucybcaax.supabase.co",
+  supabasePublishableKey: "sb_publishable_QDOuFt-B-UsReMMBxjiEAg_iI526F0q",
+  turnstileSiteKey: ""
 };

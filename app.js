@@ -483,16 +483,67 @@ async function refreshStudent(){
   if(error){if(error.code==='PGRST116'){toast('Esta clase ya no existe.',true);home();}return;}
   if(S.student?.id===id){S.student={...S.student,...data};render();}
 }
-async function submitDoubt(text){
-  if(!S.student||S.actionBusy)return;
-  const msg=clean(text,400);
-  if(msg.length<5)return toast('Escribe al menos 5 caracteres.',true);
-  S.actionBusy=true;render();
-  const {error}=await S.sc.rpc('ds_submit_doubt',{p_class_id:S.student.id,p_text:msg});
-  S.actionBusy=false;
-  if(error){toast(errMessage(error),true);render();return;}
-  S.studentSent=true;S.studentSentCount++;render();
+
+async function submitDoubt(text) {
+  if (!S.student || S.actionBusy) return;
+
+  const msg = clean(text, 400);
+
+  if (msg.length < 5) {
+    return toast("Escribe al menos 5 caracteres.", true);
+  }
+
+  S.actionBusy = true;
+  render();
+
+  try {
+    // Revisar la pregunta con Gemini
+    const { data, error } = await S.sc.functions.invoke(
+      "moderar-duda",
+      {
+        body: { text: msg }
+      }
+    );
+
+    if (error) {
+      throw new Error(
+        "No fue posible revisar la pregunta. Intenta nuevamente."
+      );
+    }
+
+    // Si Gemini no aprueba, no enviar
+    if (data?.decision !== "approve") {
+      toast(
+        data?.message ||
+        "Tu pregunta necesita ser reformulada.",
+        true
+      );
+      return;
+    }
+
+    // Guardar la pregunta aprobada
+    const { error: saveError } = await S.sc.rpc(
+      "ds_submit_doubt",
+      {
+        p_class_id: S.student.id,
+        p_text: msg
+      }
+    );
+
+    if (saveError) throw saveError;
+
+    S.studentSent = true;
+    S.studentSentCount++;
+
+  } catch (e) {
+    toast(errMessage(e), true);
+
+  } finally {
+    S.actionBusy = false;
+    render();
+  }
 }
+
 async function answerPulse(value){
   if(!S.student||S.actionBusy)return;
   S.actionBusy=true;render();

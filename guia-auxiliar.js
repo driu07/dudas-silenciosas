@@ -305,31 +305,46 @@
   // GENERAR EJERCICIOS CON GEMINI
   // ======================================
 
-  async function generar(evento) {
-    evento.preventDefault();
 
-    if (generando) return;
+async function generar(evento) {
+  evento.preventDefault();
 
-    generando = true;
+  if (generando) return;
 
-    const formulario = evento.currentTarget;
+  generando = true;
 
-    const boton = formulario.querySelector(
-      "#ga-generar"
-    );
+  const formulario = evento.currentTarget;
 
-    const mensaje = formulario.querySelector(
-      "#ga-mensaje"
-    );
+  const boton = formulario.querySelector(
+    "#ga-generar"
+  );
 
-    const opciones = new FormData(formulario);
+  const mensaje = formulario.querySelector(
+    "#ga-mensaje"
+  );
 
-    boton.disabled = true;
+  const opciones = new FormData(
+    formulario
+  );
 
-    mensaje.textContent =
-      "Generando enunciados y soluciones…";
+  const total = Number(
+    opciones.get("cantidad")
+  );
 
-    try {
+  const resultados = [];
+
+  let resumen = "";
+  let repaso = "";
+  let objetivos = [];
+
+  boton.disabled = true;
+
+  try {
+    for (let i = 1; i <= total; i++) {
+
+      mensaje.textContent =
+        `Generando ejercicio ${i} de ${total}…`;
+
       const {
         data,
         error
@@ -339,12 +354,12 @@
           body: {
             classId: contexto.clase.id,
 
+            numeroEjercicio: i,
+
+            totalEjercicios: total,
+
             duracion: Number(
               opciones.get("duracion")
-            ),
-
-            cantidad: Number(
-              opciones.get("cantidad")
             ),
 
             dificultad: String(
@@ -354,14 +369,18 @@
             incluirRepaso:
               opciones.has("repaso"),
 
+            anteriores: resultados.map(
+              e => e.titulo + ": " + e.concepto
+            ),
+
             analisis: {
               resumen:
                 contexto.analisis?.summary || "",
 
               temas:
                 (contexto.analisis?.topics || [])
-                  .slice(0, 8)
-                  .map(tema => tema.label)
+                  .slice(0, 6)
+                  .map(t => t.label)
             }
           }
         }
@@ -383,30 +402,50 @@
 
       if (
         !data?.ok ||
-        !Array.isArray(
-          data.guia?.ejercicios
-        )
+        data.guia?.ejercicios?.length !== 1
       ) {
         throw new Error(
           data?.error ||
-          "Gemini devolvió una guía no válida."
+          "Gemini devolvió un ejercicio no válido."
         );
       }
 
-      guia = data.guia;
+      resultados.push(
+        data.guia.ejercicios[0]
+      );
 
-      mostrarEdicion();
+      if (i === 1) {
+        resumen =
+          data.guia.resumen || "";
 
-    } catch (error) {
-      mensaje.textContent =
-        "Error: " +
-        (error.message || String(error));
+        repaso =
+          data.guia.repaso || "";
 
-    } finally {
-      generando = false;
-      boton.disabled = false;
+        objetivos =
+          data.guia.objetivos || [];
+      }
     }
+
+    guia = {
+      resumen,
+      repaso,
+      objetivos,
+      ejercicios: resultados
+    };
+
+    mostrarEdicion();
+
+  } catch (error) {
+    mensaje.textContent =
+      `Error después de ${resultados.length} ejercicio(s): ` +
+      (error.message || String(error));
+
+  } finally {
+    generando = false;
+    boton.disabled = false;
   }
+}
+
 
   // ======================================
   // REVISIÓN DOCENTE

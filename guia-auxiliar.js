@@ -588,13 +588,14 @@ async function generar(evento) {
         });
       });
 
-    modal.querySelector(
-      "#ga-pdf-guia"
-    ).onclick = () => imprimir(false);
+  
+modal.querySelector(
+  "#ga-pdf-guia"
+).onclick = () => compilarPDF(false);
 
-    modal.querySelector(
-      "#ga-pdf-pauta"
-    ).onclick = () => imprimir(true);
+modal.querySelector(
+  "#ga-pdf-pauta"
+).onclick = () => compilarPDF(true);
 
     modal.querySelector(
       "#ga-tex-guia"
@@ -869,6 +870,232 @@ ${aLatex(e.error_frecuente)}}
   // ======================================
   // GENERAR VISTA IMPRIMIBLE PDF
   // ======================================
+
+  // ======================================
+  // COMPILACIÓN REAL LATEX -> PDF
+  // ======================================
+
+  let pdfOcupado = false;
+
+  async function compilarPDF(pauta) {
+    if (pdfOcupado) return;
+
+    const modal = document.getElementById(
+      "ds-guia-modal"
+    );
+
+    if (!modal || !guia) return;
+
+    let vista = modal.querySelector(
+      "#ga-vista-pdf"
+    );
+
+    if (!vista) {
+      vista = document.createElement("section");
+      vista.id = "ga-vista-pdf";
+      vista.style.marginTop = "24px";
+
+      modal.querySelector(".panel").appendChild(
+        vista
+      );
+    }
+
+    const botones = modal.querySelectorAll(
+      "#ga-pdf-guia, #ga-pdf-pauta"
+    );
+
+    const actualizar = mensaje => {
+      vista.textContent = mensaje;
+    };
+
+    const conLimite = (promesa, ms) => {
+      let temporizador;
+
+      const limite = new Promise(
+        (_, rechazar) => {
+          temporizador = setTimeout(
+            () => rechazar(
+              new Error(
+                "El compilador tardó demasiado."
+              )
+            ),
+            ms
+          );
+        }
+      );
+
+      return Promise.race([
+        promesa,
+        limite
+      ]).finally(
+        () => clearTimeout(temporizador)
+      );
+    };
+
+    let motor = null;
+
+    try {
+      pdfOcupado = true;
+
+      botones.forEach(
+        boton => boton.disabled = true
+      );
+
+      if (
+        typeof window.PdfTeXEngine !== "function"
+      ) {
+        throw new Error(
+          "No se cargó el motor PdfTeXEngine."
+        );
+      }
+
+      actualizar(
+        "Iniciando motor LaTeX..."
+      );
+
+      motor = new window.PdfTeXEngine();
+
+      await conLimite(
+        motor.loadEngine(),
+        35000
+      );
+
+      actualizar(
+        "Preparando documento LaTeX..."
+      );
+
+      const codigo = crearTex(pauta);
+
+      motor.writeMemFSFile(
+        "main.tex",
+        codigo
+      );
+
+      motor.setEngineMainFile(
+        "main.tex"
+      );
+
+      actualizar(
+        "Compilando documento PDF..."
+      );
+
+      const resultado = await conLimite(
+        motor.compileLaTeX(),
+        90000
+      );
+
+      if (
+        resultado.status !== 0 ||
+        !resultado.pdf?.length
+      ) {
+        console.error(
+          "Log de compilación:",
+          resultado.log
+        );
+
+        throw new Error(
+          "LaTeX encontró un error. " +
+          "Revisa la consola F12."
+        );
+      }
+
+      const blob = new Blob(
+        [resultado.pdf],
+        {
+          type: "application/pdf"
+        }
+      );
+
+      const url = URL.createObjectURL(blob);
+
+      const anterior = vista.dataset.pdfUrl;
+
+      if (anterior) {
+        URL.revokeObjectURL(anterior);
+      }
+
+      vista.dataset.pdfUrl = url;
+
+      const titulo = document.createElement(
+        "h3"
+      );
+
+      titulo.textContent = pauta
+        ? "Pauta de soluciones compilada"
+        : "Guía de ejercicios compilada";
+
+      const enlace = document.createElement(
+        "a"
+      );
+
+      enlace.href = url;
+
+      enlace.download =
+        `${
+          pauta ? "pauta" : "guia"
+        }-${nombreArchivo(
+          contexto.clase.title
+        )}.pdf`;
+
+      enlace.textContent =
+        "Descargar PDF compilado";
+
+      enlace.style.display = "inline-block";
+      enlace.style.margin = "12px 0";
+      enlace.style.padding = "12px 16px";
+      enlace.style.background = "#17666d";
+      enlace.style.color = "#ffffff";
+      enlace.style.borderRadius = "8px";
+      enlace.style.textDecoration = "none";
+
+      const visor = document.createElement(
+        "iframe"
+      );
+
+      visor.src = url;
+
+      visor.title = "Vista previa PDF";
+
+      visor.style.width = "100%";
+      visor.style.height = "650px";
+      visor.style.border =
+        "1px solid #d4e1e3";
+      visor.style.borderRadius = "10px";
+
+      vista.replaceChildren(
+        titulo,
+        enlace,
+        visor
+      );
+
+      // Iniciar descarga
+      enlace.click();
+
+    } catch (error) {
+      console.error(
+        "Error al compilar PDF:",
+        error
+      );
+
+      actualizar(
+        "No se pudo compilar el PDF: " +
+        (error?.message || String(error)) +
+        " Puedes descargar el .tex " +
+        "y compilarlo en Overleaf."
+      );
+
+    } finally {
+      try {
+        motor?.closeWorker();
+      } catch {}
+
+      pdfOcupado = false;
+
+      botones.forEach(
+        boton => boton.disabled = false
+      );
+    }
+  }
 
   function imprimir(pauta) {
     const ventanaPDF =

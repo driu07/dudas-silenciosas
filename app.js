@@ -1289,6 +1289,19 @@ function viewDash() {
         Informe / PDF
       </button>
 
+${!S.demo
+  ? `
+    <button
+      class="btn sm primary"
+      data-act="guide"
+      ${n === 0 ? "disabled" : ""}>
+      Preparar guía auxiliar
+    </button>
+  `
+  : ""}
+
+      
+
     </div>
 
     <div class="bar">
@@ -3716,6 +3729,35 @@ const ACTIONS = {
   analyzeAI,
   csv,
   report,
+ 
+  guide: () => {
+    if (!S.tc || !S.teacher || !S.cls || S.demo) {
+      return;
+    }
+
+    if (!visibleDoubts().length) {
+      toast(
+        "Necesitas dudas para generar la guía.",
+        true
+      );
+      return;
+    }
+
+    if (!window.DS_GUIAS) {
+      toast(
+        "No se pudo cargar el generador de guías.",
+        true
+      );
+      return;
+    }
+
+    window.DS_GUIAS.abrir({
+      client: S.tc,
+      clase: S.cls,
+      analisis: currentAnalysis(visibleDoubts())
+    });
+  },
+
 
   cancelConfirm: () => {
     S.confirm = null;

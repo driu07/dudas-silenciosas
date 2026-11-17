@@ -641,10 +641,13 @@ function viewHome() {
 
         <h2>Soy profesor/a</h2>
 
-        <p class="small muted">
-          Accede con tu correo autorizado
-          para crear clases y revisar dudas.
-        </p>
+      
+<p class="small muted">
+  Cualquier persona puede registrarse
+  como profesor, crear clases
+  y revisar las dudas de sus estudiantes.
+</p>
+
 
         <button
           class="btn primary big"
@@ -711,10 +714,13 @@ function viewTeacher() {
 
           <h2>Entrar con correo</h2>
 
-          <p class="muted small">
-            Recibirás un enlace para iniciar
-            sesión con tu correo autorizado.
-          </p>
+         
+<p class="muted small">
+  Ingresa tu correo electrónico.
+  Recibirás un enlace para iniciar sesión.
+  No necesitas autorización previa.
+</p>
+
 
           <form
             class="stack"

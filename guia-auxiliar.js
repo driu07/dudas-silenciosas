@@ -589,13 +589,15 @@ async function generar(evento) {
       });
 
   
+
 modal.querySelector(
   "#ga-pdf-guia"
-).onclick = () => compilarPDF(false);
+).onclick = () => imprimir(false);
 
 modal.querySelector(
   "#ga-pdf-pauta"
-).onclick = () => compilarPDF(true);
+).onclick = () => imprimir(true);
+
 
     modal.querySelector(
       "#ga-tex-guia"
